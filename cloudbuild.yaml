@@ -1,0 +1,34 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/${PROJECT_ID}/egap-repo/egap-mcp-hub:latest'
+      - '.'
+
+  # Push the container image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '--all-tags'
+      - 'us-central1-docker.pkg.dev/${PROJECT_ID}/egap-repo/egap-mcp-hub'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'egap-mcp-hub'
+      - '--image'
+      - 'us-central1-docker.pkg.dev/${PROJECT_ID}/egap-repo/egap-mcp-hub:latest'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+
+# Store images in Artifact Registry
+images:
+  - 'us-central1-docker.pkg.dev/${PROJECT_ID}/egap-repo/egap-mcp-hub:latest'
