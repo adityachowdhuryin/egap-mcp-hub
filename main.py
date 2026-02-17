@@ -4,6 +4,7 @@ Phase 1 - JSON-RPC 2.0 handler for MCP Server with Vertex AI Search, Email, and 
 """
 
 from typing import Any, Optional
+import os  # <--- NEW
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from google.cloud import discoveryengine_v1 as discoveryengine
@@ -74,7 +75,7 @@ def list_tools() -> list[ToolDefinition]:
     return [
         ToolDefinition(
             name="search_vertex_docs",
-            description="Search the official Vertex AI documentation for technical answers.",
+            description="Search the official Vertex AI documentation for technical answers. Accepts optional 'data_store_id'.",
             action_type="read"
         ),
         ToolDefinition(
@@ -94,23 +95,27 @@ def list_tools() -> list[ToolDefinition]:
 # Vertex AI Search Functions
 # -----------------------------------------------------------------------------
 
-def search_knowledge_base(query: str) -> list[str]:
+def search_knowledge_base(query: str, data_store_id: str = None) -> list[str]:
     """
     Search the Vertex AI data store for relevant documentation.
     
     Args:
         query: The search query string
+        data_store_id: Optional ID of the data store to search. Defaults to env var or constant.
         
     Returns:
         A list of snippet summaries from the search results
     """
     client = discoveryengine.SearchServiceClient()
     
+    # Dynamic target selection
+    target_store = data_store_id or os.environ.get("VERTEX_DATA_STORE_ID") or DATA_STORE_ID
+    
     # Build the serving config path
     serving_config = client.serving_config_path(
         project=PROJECT_ID,
         location="global",
-        data_store=DATA_STORE_ID,
+        data_store=target_store,
         serving_config="default_config"
     )
     
@@ -257,9 +262,12 @@ def handle_method(method: str, params: Optional[dict] = None) -> Any:
 
         if tool_name == "search_vertex_docs":
             query = tool_args.get("query", "")
+            data_store_id = tool_args.get("data_store_id", None)  # Extract optional arg
+            
             if not query:
                 raise ValueError("search_vertex_docs requires a 'query' argument")
-            snippets = search_knowledge_base(query)
+            
+            snippets = search_knowledge_base(query, data_store_id)
             return {"content": [{"type": "text", "text": "\n\n".join(snippets)}]}
         elif tool_name == "send_email":
             to_email = tool_args.get("to_email", "")
