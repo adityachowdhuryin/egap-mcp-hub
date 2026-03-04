@@ -23,5 +23,5 @@ ENV PORT=8080
 # Expose port
 EXPOSE 8080
 
-# Run uvicorn with production settings
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT}"]
+# Run MCP server with streamable-http transport
+CMD ["python", "main.py"]
